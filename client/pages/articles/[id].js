@@ -1,3 +1,4 @@
+// client/pages/articles/[id].js
 import axios from 'axios';
 
 export default function ArticlePage({ article }) {
@@ -13,12 +14,31 @@ export default function ArticlePage({ article }) {
 }
 
 export async function getStaticPaths() {
-  const res = await axios.get(process.env.NEXT_PUBLIC_API_URL + '/api/articles');
-  const paths = res.data.map(a => ({ params: { id: a._id } }));
-  return { paths, fallback: false };
+  let articles = [];
+  try {
+    const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/articles`);
+    articles = res.data;
+  } catch (err) {
+    console.error('Erro ao buscar lista de artigos:', err.message);
+  }
+  const paths = articles.map(a => ({ params: { id: a._id } }));
+  return {
+    paths,
+    fallback: 'blocking',  // gera páginas on‑demand se faltar alguma
+  };
 }
 
 export async function getStaticProps({ params }) {
-  const res = await axios.get(process.env.NEXT_PUBLIC_API_URL + `/api/articles/${params.id}`);
-  return { props: { article: res.data } };
+  try {
+    const res = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/articles/${params.id}`
+    );
+    return {
+      props: { article: res.data },
+      revalidate: 60,  // revalida a cada 60 segundos
+    };
+  } catch (err) {
+    console.error(`Erro ao buscar artigo ${params.id}:`, err.message);
+    return { notFound: true };
+  }
 }
